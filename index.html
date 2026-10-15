@@ -2705,12 +2705,13 @@ html { box-sizing: border-box; }
 .tour-tag--client { background: var(--mf-highlight-soft); color: var(--mf-highlight-text); }
 
 /* a quiet pulse on the one thing worth tapping (no text) */
-.tour-pulse { outline: 3px solid var(--mf-primary); outline-offset: 2px; animation: tour-pulse 1.6s ease-in-out infinite; }
+.tour-pulse, .tour-nudge { outline: 3px solid var(--mf-primary); outline-offset: 2px; animation: tour-pulse 1.6s ease-in-out infinite; }
+.tour-free .tour-free__text { flex: 1 1 auto; margin: 0; font-size: 16px; line-height: 24px; }
 @keyframes tour-pulse {
   0%, 100% { outline-color: var(--mf-primary); outline-offset: 2px; }
   50% { outline-color: transparent; outline-offset: 7px; }
 }
-@media (prefers-reduced-motion: reduce) { .tour-pulse { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .tour-pulse, .tour-nudge { animation: none; } }
 
 /* opening, chapter openers and the closing map: a layer over the whole app */
 .proto[data-mode="phone"] .tour-layer, .proto[data-mode="real"] .tour-layer { scrollbar-width: none; }
@@ -10490,7 +10491,7 @@ var CHAPTERS = [
         enter: function () { App.replace('clients'); } },
       { id: 'home', side: 'coach', phase: 'signed', title: 'היום',
         text: 'מה מיכל צריכה להיום: משימות, ומי נפגש איתה. כאן נעקוב אחרי נועה.',
-        hint: ['.hcard__btn[data-go="brief"]'],
+        hint: ['.hcard .track__btn[data-sheet="session"][data-client="c1"][data-n="6"]'],
         enter: function () { App.replace('home'); } },
       { id: 'session', side: 'coach', phase: 'signed', title: 'חלון מפגש',
         text: 'לחיצה על מפגש פותחת הכנה, סיום, סטטוס, תשלום והערה לזכור.',
@@ -10568,6 +10569,64 @@ function indexOfId(id) {
 /* ------------------------------------------------------------------- mount */
 var D = {};
 var cur = 0;   /* index in STEPS */
+var free = false;   /* free play after the closing map: nothing is locked */
+
+/* ---------------------------------------------------------- the guide lock
+   While she is on a screen, everything that stays on the screen works (open a card, a switch, a choice, a window that opens
+   and closes). Everything that would take her to another screen is locked: the bottom menu, back arrows, links, and the buttons
+   that change the step of a flow. A locked tap makes [הבא] pulse with one short sentence. The highlighted button, when it would
+   take her on, takes the walk on with it, so the title always matches the screen. [הקודם] and [הבא] always work. */
+var NAV_ACTS = ['entryGoogle', 'entrySendCode', 'entryVerify', 'entryBack', 'entryLogout', 'onbNext', 'onbSkip', 'onbBack', 'onbClose', 'onbDone',
+  'processNext', 'processPrev', 'processGoStep', 'processCreate', 'esNext', 'esPrev', 'esSkip', 'esFinish', 'esClose', 'intakeSubmit', 'spSkip'];
+
+function navigating(t) {
+  var n = t.closest('.nav__item, [data-go], [data-back], [data-act]');
+  if (!n) return null;
+  if (n.matches('.nav__item, [data-go], [data-back]')) return n;
+  return NAV_ACTS.indexOf(n.getAttribute('data-act')) >= 0 ? n : null;
+}
+
+var nudgeTimer = null;
+function nudge() {
+  var t = D.bar.querySelector('.tour-text'), n = D.bar.querySelector('.tour-next'), s = STEPS[cur];
+  if (!t || !n) return;
+  t.textContent = 'כדי להמשיך, לחצי על הבא.';
+  n.classList.add('tour-nudge');
+  clearTimeout(nudgeTimer);
+  nudgeTimer = setTimeout(function () {
+    n.classList.remove('tour-nudge');
+    if (STEPS[cur] === s) t.textContent = sceneText(s);
+  }, 2400);
+}
+
+function onGuardClick(e) {
+  var s = STEPS[cur], t = e.target;
+  if (free || !s || s.kind !== 'scene' || !D.bar || D.bar.hidden || !t || !t.closest) return;
+  if (t.closest('.tour-bar, .tour-layer') || !D.device.contains(t)) return;
+  var n = navigating(t);
+  if (!n) return;
+  e.preventDefault();
+  e.stopPropagation();
+  var pulse = D.device.querySelector('.tour-pulse');
+  if (pulse && (pulse === n || pulse.contains(t) || n.contains(pulse))) { goStep(cur + 1); return; }
+  nudge();
+}
+
+function enterFree() {
+  free = true;
+  clearToast();
+  D.layer.hidden = true;
+  D.layer.innerHTML = '';
+  reset();
+  build('signed');
+  App.replace('home');
+  D.bar.hidden = false;
+  D.bar.innerHTML =
+    '<div class="tour-bar__in tour-free"><div class="tour-bar__main">' +
+      '<p class="tour-text tour-free__text">מצב חופשי: אפשר ללחוץ על הכול.</p>' +
+      '<button type="button" class="btn btn--primary tour-next" data-tour="exit-free">חזרה לסיור</button>' +
+    '</div></div>';
+}
 
 function el(tag, cls, html) {
   var e = document.createElement(tag);
@@ -10677,6 +10736,7 @@ function showClosing() {
       '<div class="tour-close__top"><button type="button" class="icon-btn" data-tour="prev" aria-label="חזרה למסך האחרון">' + App.icon('back', 24) + '</button></div>' +
       '<h1 class="page-title" id="tour-close-h" tabindex="-1">כל מפתן במפה אחת</h1>' +
       map +
+      '<button type="button" class="btn btn--primary btn--block" data-tour="free">לשחק באפליקציה בעצמי</button>' +
       '<button type="button" class="btn btn--secondary btn--block" data-tour="desktop">' + (desktop ? 'לחזור לתצוגת טלפון' : 'לראות במחשב') + '</button>' +
       '<div class="stack tour-q"><h2 class="h2">שלוש שאלות קטנות</h2><ol class="tour-q__list">' +
         QUESTIONS.map(function (q) { return '<li>' + esc(q) + '</li>'; }).join('') + '</ol>' +
@@ -10691,6 +10751,7 @@ function save() {
 
 function goStep(i) {
   i = Math.max(0, Math.min(STEPS.length - 1, i));
+  free = false;
   cur = i;
   save();
   var s = STEPS[i];
@@ -10708,7 +10769,10 @@ function goStep(i) {
   renderBar();
   try { if (s.after) s.after(); } catch (e2) { if (window.console) console.error('[tour ' + s.id + ' after]', e2); }
   applyHint();
+  /* twice: the web fonts arrive a moment later and can change the heights */
   setTimeout(revealHint, 60);
+  setTimeout(function () { if (cur === i) revealHint(); }, 600);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (cur === i) revealHint(); });
 }
 
 function setProtoMode(m) {
@@ -10724,6 +10788,8 @@ function onTourClick(e) {
     case 'prev': goStep(cur - 1); break;
     case 'goto': goStep(+b.getAttribute('data-i')); break;
     case 'restart': setProtoMode('phone'); goStep(0); break;
+    case 'free': enterFree(); break;
+    case 'exit-free': goStep(STEPS.length - 1); break;
     case 'desktop':
       if (window.innerWidth >= 700) {
         var toDesktop = D.proto.getAttribute('data-mode') !== 'desktop';
@@ -10947,6 +11013,7 @@ function onChange() {
 function init() {
   if (!byId('mf-device') || !App.state.data || !App.state.data.leads) return;   /* the shell did not start: its own error panel shows */
   mount();
+  document.addEventListener('click', onGuardClick, true);
   document.addEventListener('click', onTourClick);
   new MutationObserver(onChange).observe(D.device, { childList: true, subtree: true });
   if (D.proto.getAttribute('data-mode') === 'desktop') setProtoMode('phone');
@@ -10958,6 +11025,8 @@ function init() {
 window.__tour = {
   go: function (i) { goStep(i); },
   goId: function (id) { goStep(indexOfId(id)); },
+  free: function (on) { if (on) enterFree(); else goStep(STEPS.length - 1); },
+  isFree: function () { return free; },
   steps: STEPS,
   chapters: CHAPTERS,
   index: function () { return cur; }
