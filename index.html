@@ -10266,6 +10266,8 @@ function esc(s) { return App.esc(s); }
 (function patchSeed() {
   var seed = MD.seed;
   seed.leads.forEach(function (l) { if (l.source === 'קוד QR') l.source = 'קוד סריקה'; });
+  /* the sample client's overarching goal, in the founder's wording */
+  seed.clients.forEach(function (c) { if (c.id === 'c1') c.overarchingGoal = 'להרגיש שאני בוחרת בחיים שלי, ולא רק מגיבה להם'; });
   seed.clients.forEach(function (c) {
     (c.documents || []).forEach(function (d) { if (d.meta === 'PDF') d.meta = 'קובץ'; });
   });
@@ -10399,9 +10401,9 @@ var CHAPTERS = [
     ] },
 
   { title: 'מיטל פונה, ומיכל מקבלת',
-    story: 'מיטל מוצאת את הדף של מיכל וממלאת טופס. מכאן הפנייה עוברת שלבים עד החלטה.',
-    sides: ['lead', 'coach'],
-    preview: 'הטופס של הפונה, לוח הפניות, שיחת התאמה והחלטה',
+    story: 'מיטל מוצאת את הדף של מיכל וממלאת טופס. מכאן הפנייה עוברת שלבים עד החלטה, פתיחת תהליך וחתימה על החוזה.',
+    sides: ['lead', 'coach', 'client'],
+    preview: 'הטופס של הפונה, לוח הפניות, שיחת התאמה, פתיחת תהליך וחתימה על החוזה',
     scenes: [
       { id: 'public', side: 'lead', phase: 'none', title: 'דף הפנייה',
         text: 'כך נראה הדף של מיכל לפונה: טופס קצר, בלי הרשמה ובלי אפליקציה.',
@@ -10447,14 +10449,7 @@ var CHAPTERS = [
           App.ui.lead = { decision: {} };
           App.ui.lead.decision[LEAD] = 'started';
           App.replace('lead', { id: LEAD });
-        } }
-    ] },
-
-  { title: 'מיכל מנהלת את התהליך',
-    story: 'מיטל התחילה תהליך. כך מיכל מנהלת אותו, והמתאמנת חותמת ורואה את הצעד שלה. את המפגשים עצמם נראה אצל נועה, שכבר באמצע.',
-    sides: ['coach', 'client'],
-    preview: 'פתיחת תהליך, חתימה, היום, מפגש, מחברת, מטרות ותיק המתאמן',
-    scenes: [
+        } },
       { id: 'wizard', side: 'coach', phase: 'called', title: 'פתיחת תהליך',
         text: 'מיכל קובעת מתי נפגשים, וכל הפרטים כבר ממולאים מהטופס של מיטל.',
         hint: ['[data-act="processNext"]', '[data-act="processCreate"]'],
@@ -10482,7 +10477,14 @@ var CHAPTERS = [
           if (digits.length === 4 && !digits[0].__tourFilled) {
             Array.prototype.forEach.call(digits, function (inp, i) { inp.value = pin.charAt(i); inp.__tourFilled = true; });
           }
-        } },
+        } }
+    ] },
+
+  { title: 'מיכל מנהלת את התהליך',
+    story: 'לאחר החתימה מיטל מתחילה את התהליך. את ניהול המפגשים עצמם נראה אצל נועה, שכבר באמצע.',
+    sides: ['coach', 'client'],
+    preview: 'מתאמנים, היום, מפגש, מחברת, מטרות ותיק המתאמן',
+    scenes: [
       { id: 'clients', side: 'coach', phase: 'signed', title: 'המתאמנים',
         text: 'כל המתאמנים והתהליכים במקום אחד, עם מעקב אחרי המפגשים.',
         enter: function () { App.replace('clients'); } },
