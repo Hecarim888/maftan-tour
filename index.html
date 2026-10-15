@@ -2737,6 +2737,20 @@ html { box-sizing: border-box; }
 .field { min-width: 0; }
 .field :is(input, select, textarea) { min-width: 0; max-width: 100%; }
 
+/* time and date fields (see wrapPickers in 60-tour.js): a box of the column's width, the real field invisible on top of it */
+.tour-pick {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  inline-size: 100%; min-width: 0; min-height: 48px; padding: 0 14px; overflow: hidden;
+  background: var(--mf-surface); color: var(--mf-text);
+  border: 1px solid var(--mf-border-control); border-radius: var(--radius); font-size: 16px; line-height: 24px;
+}
+.tour-pick:focus-within { border-color: var(--mf-primary); outline: 2px solid var(--mf-focus-ring); outline-offset: 2px; }
+.tour-pick__val { min-width: 0; direction: ltr; unicode-bidi: isolate; text-align: start; }
+.tour-pick__ico { flex: none; display: inline-flex; color: var(--mf-text-muted); }
+.tour-pick > input[type="time"], .tour-pick > input[type="date"] {
+  position: absolute; inset: 0; inline-size: 100%; block-size: 100%; min-width: 0; margin: 0; padding: 0; border: 0; opacity: 0; font-size: 16px;
+}
+
 /* things that only help someone who builds the prototype, and the trial note (plans and prices are not part of the walkthrough) */
 .cp-proto, .th-coachlink, .cp-back[data-go], .pub-hero__label, .op-trial { display: none !important; }
 
@@ -10639,7 +10653,40 @@ function clausesHTML(withBadge) {
     rows.map(function (r) { return '<section class="cp-clause"><h3>' + esc(r[0]) + '</h3><p>' + esc(r[1]) + '</p></section>'; }).join('');
 }
 
+/* Time and date fields: iPhone Safari gives them a wide natural width that ignores the column and runs off the screen.
+   Each one is wrapped in a box of the column's own width: the real field sits invisible on top (a tap still opens the phone's
+   own picker) and the value is drawn in the box, so nothing the browser does inside the field can change the layout.
+   Dates show as day.month (no year). */
+function pickText(inp) {
+  var v = inp.value, m;
+  if (!v) return '—';
+  if (inp.type === 'date') { m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v); return m ? (+m[3]) + '.' + (+m[2]) : v; }
+  return v;
+}
+function wrapPickers() {
+  Array.prototype.forEach.call(D.device.querySelectorAll('input[type="time"], input[type="date"]'), function (inp) {
+    var box = inp.parentNode;
+    if (box.classList && box.classList.contains('tour-pick')) return;
+    var had = document.activeElement === inp;
+    box = el('span', 'tour-pick');
+    var val = el('span', 'tour-pick__val');
+    var ico = el('span', 'tour-pick__ico', App.icon(inp.type === 'date' ? 'calendar' : 'clock', 20));
+    val.setAttribute('aria-hidden', 'true');
+    ico.setAttribute('aria-hidden', 'true');
+    inp.parentNode.insertBefore(box, inp);
+    box.appendChild(val);
+    box.appendChild(ico);
+    box.appendChild(inp);
+    function sync() { val.textContent = pickText(inp); }
+    inp.addEventListener('input', sync);
+    inp.addEventListener('change', sync);
+    sync();
+    if (had) { try { inp.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+  });
+}
+
 function patchDom() {
+  wrapPickers();
   var ct = D.device.querySelector('.cp-ctext');
   if (ct && !ct.hasAttribute('data-tour')) {
     ct.setAttribute('data-tour', '1');
