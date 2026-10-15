@@ -2730,6 +2730,13 @@ html { box-sizing: border-box; }
 .tour-shot__scroll img { display: block; max-width: none; }
 .tour-shot__scroll.is-fit img { width: 100%; height: auto; }
 
+/* small phones: the bar leaves the app less height, so a window's content keeps its own height and the window scrolls
+   (in the shell the children of a window may shrink, and the ones with overflow:hidden then collapse and clip) */
+.sheet__body > * { flex-shrink: 0; }
+/* iPhone: time and date fields have a wide natural width; let them shrink with their column instead of leaving the screen */
+.field { min-width: 0; }
+.field :is(input, select, textarea) { min-width: 0; max-width: 100%; }
+
 /* things that only help someone who builds the prototype, and the trial note (plans and prices are not part of the walkthrough) */
 .cp-proto, .th-coachlink, .cp-back[data-go], .pub-hero__label, .op-trial { display: none !important; }
 
