@@ -10769,7 +10769,12 @@ function goStep(i) {
   renderBar();
   try { if (s.after) s.after(); } catch (e2) { if (window.console) console.error('[tour ' + s.id + ' after]', e2); }
   applyHint();
-  /* twice: the web fonts arrive a moment later and can change the heights */
+  /* first, before anything is painted: the screen then opens already where it should be, instead of opening at the top and jumping */
+  revealHint();
+  /* the lead screen puts its own scroll back one tick after it is drawn (setTimeout 0, set while the scene was built, so it runs
+     before this one): scroll again right after it, so the screen is not seen at the top for a moment */
+  setTimeout(function () { if (cur === i) revealHint(); }, 0);
+  /* and again: the web fonts arrive a moment later and can change the heights */
   setTimeout(revealHint, 60);
   setTimeout(function () { if (cur === i) revealHint(); }, 600);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (cur === i) revealHint(); });
@@ -10990,6 +10995,8 @@ function revealHint() {
   var s = STEPS[cur], sc = byId('mf-scroll');
   var e = (s && s.reveal && D.device.querySelector(s.reveal)) || D.device.querySelector('.tour-pulse');
   if (!e || !sc || !sc.contains(e)) return;
+  /* a button in the screen's own sticky bar is always in view: scrolling "to" it never gets there, so the page just kept scrolling */
+  if (e.closest('.sticky-actions') || getComputedStyle(e).position === 'sticky') return;
   var r = e.getBoundingClientRect(), v = sc.getBoundingClientRect();
   var sticky = sc.querySelector('.sticky-actions'), stickyH = sticky ? sticky.offsetHeight : 0;
   var bottom = v.bottom - stickyH - 12, top = v.top + 12;
