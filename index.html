@@ -2676,11 +2676,7 @@ html { box-sizing: border-box; }
 
 /* the walkthrough bar sits UNDER the app (never over it), so no screen button is ever covered */
 .tour-device { display: flex; flex-direction: column; }
-.tour-device > .app { flex: 1 1 0; height: auto; min-height: 0; transition: opacity 140ms ease-out; }
-/* one fixed height for the bar (the sentence always has room for two lines), so the app never resizes between steps */
-.tour-device > .app.tour-swapping { opacity: 0; transition: none; }
-.tour-quiet .sheet, .tour-quiet .sheet-scrim { animation: none !important; }
-@media (prefers-reduced-motion: reduce) { .tour-device > .app { transition: none; } }
+.tour-device > .app { flex: 1 1 0; height: auto; min-height: 0; }
 
 .tour-bar {
   flex: none; position: relative; z-index: 30;
@@ -2690,11 +2686,11 @@ html { box-sizing: border-box; }
 .tour-bar[hidden], .tour-layer[hidden] { display: none !important; }
 .tour-bar__in { display: grid; gap: 6px; max-width: 720px; margin-inline: auto; }
 .tour-bar__top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.tour-bar__main { display: flex; align-items: center; gap: 8px; min-height: 48px; }
+.tour-bar__main { display: flex; align-items: center; gap: 8px; }
 .tour-cap { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 18px; line-height: 27px; font-weight: 700; color: var(--mf-text); }
 .tour-prev { flex: none; padding-inline: 8px; }
 .tour-next { flex: none; min-width: 88px; min-height: 48px; }
-.tour-text { margin: 0; min-height: 42px; font-size: 14px; line-height: 21px; color: var(--mf-text); }
+.tour-text { margin: 0; font-size: 14px; line-height: 21px; color: var(--mf-text); }
 .tour-pos { font-size: 14px; line-height: 21px; color: var(--mf-text-muted); white-space: nowrap; }
 
 /* progress: one segment per chapter, as wide as its screens, filled as far as she has come */
@@ -2720,9 +2716,7 @@ html { box-sizing: border-box; }
 /* opening, chapter openers and the closing map: a layer over the whole app */
 .proto[data-mode="phone"] .tour-layer, .proto[data-mode="real"] .tour-layer { scrollbar-width: none; }
 .proto[data-mode="phone"] .tour-layer::-webkit-scrollbar, .proto[data-mode="real"] .tour-layer::-webkit-scrollbar { display: none; }
-.tour-layer { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column; overflow-y: auto; background: var(--mf-bg); animation: tour-in 160ms ease-out; }
-@keyframes tour-in { from { opacity: 0; } to { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .tour-layer { animation: none; } }
+.tour-layer { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column; overflow-y: auto; background: var(--mf-bg); }
 .tour-open { margin: auto; width: 100%; max-width: 480px; display: grid; justify-items: center; gap: 28px; padding: 32px var(--mf-gutter); text-align: center; }
 .tour-open__name { margin: 0; font: 500 56px/1.2 var(--font-display); font-synthesis: none; color: var(--mf-text); }
 .tour-open__sub { margin: 0; font-size: 18px; line-height: 27px; color: var(--mf-text-muted); text-wrap: balance; }
@@ -10415,7 +10409,6 @@ var CHAPTERS = [
       { id: 'public', side: 'lead', phase: 'none', title: 'דף הפנייה',
         text: 'כך נראה הדף של מיכל לפונה: טופס קצר, בלי הרשמה ובלי אפליקציה.',
         hint: ['[data-act="intakeSubmit"]'],
-        reveal: false,
         enter: function () {
           App.ui.intake = { form: { name: PERSONA.name, phone: PERSONA.phoneShown, address: 'f', why: PERSONA.why, mode: 'zoom', times: ['ערב'], consent: true, adult: true } };
           App.replace('public');
@@ -10766,7 +10759,6 @@ function goStep(i) {
   if (s.kind === 'open') { showOpening(); return; }
   if (s.kind === 'chapter') { showChapter(s.ch); return; }
   if (s.kind === 'close') { showClosing(); return; }
-  swapStart();
   D.layer.hidden = true;
   D.layer.innerHTML = '';
   D.bar.hidden = false;
@@ -10777,27 +10769,10 @@ function goStep(i) {
   renderBar();
   try { if (s.after) s.after(); } catch (e2) { if (window.console) console.error('[tour ' + s.id + ' after]', e2); }
   applyHint();
-  revealHint();
-  /* the screens finish a few things a tick later (their own scroll and focus): settle them while the app is still hidden */
-  setTimeout(function () { if (cur === i) revealHint(); }, 0);
-  setTimeout(function () { if (cur === i) revealHint(); }, 40);
-  if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(function () { if (cur === i) revealHint(); });
-  swapEnd();
-}
-
-/* A step is a rebuild of the whole screen. It happens while the app is hidden (opacity 0) and the app then fades in, so nothing
-   is seen jumping: no scroll fix, no sheet sliding in, no bar resize. */
-var swapTimer = null, quietTimer = null;
-function swapStart() {
-  clearTimeout(swapTimer);
-  clearTimeout(quietTimer);
-  D.app.classList.add('tour-swapping');
-  D.device.classList.add('tour-quiet');
-}
-function swapEnd() {
-  clearTimeout(swapTimer);
-  swapTimer = setTimeout(function () { D.app.classList.remove('tour-swapping'); }, 60);
-  quietTimer = setTimeout(function () { D.device.classList.remove('tour-quiet'); }, 600);
+  /* twice: the web fonts arrive a moment later and can change the heights */
+  setTimeout(revealHint, 60);
+  setTimeout(function () { if (cur === i) revealHint(); }, 600);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (cur === i) revealHint(); });
 }
 
 function setProtoMode(m) {
@@ -11013,11 +10988,8 @@ function applyHint() {
    `reveal` element when it has one, otherwise the pulsing target. A tall element is aligned by its top. */
 function revealHint() {
   var s = STEPS[cur], sc = byId('mf-scroll');
-  if (!s || s.reveal === false) return;
-  var e = (s.reveal && D.device.querySelector(s.reveal)) || D.device.querySelector('.tour-pulse');
+  var e = (s && s.reveal && D.device.querySelector(s.reveal)) || D.device.querySelector('.tour-pulse');
   if (!e || !sc || !sc.contains(e)) return;
-  /* a button in the screen's own sticky bar is always in view: scrolling for it only makes the page jump */
-  if (e.closest('.sticky-actions') || getComputedStyle(e).position === 'sticky') return;
   var r = e.getBoundingClientRect(), v = sc.getBoundingClientRect();
   var sticky = sc.querySelector('.sticky-actions'), stickyH = sticky ? sticky.offsetHeight : 0;
   var bottom = v.bottom - stickyH - 12, top = v.top + 12;
